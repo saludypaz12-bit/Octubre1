@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas de Flujo · Pro Salud Paz</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container">
+    <h2>Análisis de Horarios y Clientes</h2>
+
+    <div class="card-soft">
+        <h3>📅 Rango de Análisis</h3>
+        <div class="flex-filtros">
+            <div class="filtro-group">
+                <label>Desde</label>
+                <input type="date" id="estDesde">
+            </div>
+            <div class="filtro-group">
+                <label>Hasta</label>
+                <input type="date" id="estHasta">
+            </div>
+        </div>
+        <button onclick="analizarTendenciasComerciales()" class="btn-green">📊 Analizar Flujo</button>
+    </div>
+
+    <p id="txtDebug" class="text-center-muted mt-neg mb-15">Cargando datos del Excel...</p>
+
+    <div class="card-gold-dash">
+        🔥 <strong style="color:var(--plum-text)">Día de Más Ventas:</strong> <span id="txtDiaTop" style="font-family:'Quicksand'; font-size:16px; color:var(--rose-dark); margin:0; display:inline;">Cargando...</span><br>
+        ⏰ <strong style="color:var(--plum-text)">Hora Pico Más Frecuente:</strong> <span id="txtHoraTop" style="font-family:'Quicksand'; font-size:16px; color:var(--lavender-dark); margin:0; display:inline;">Cargando...</span>
+    </div>
+
+    <h3>🗓️ Visitas por Día de la Semana</h3>
+    <table id="tablaDias">
+        <thead><tr><th>Día</th><th>N° Servicios</th></tr></thead>
+        <tbody><tr><td colspan="2">Cargando datos...</td></tr></tbody>
+    </table>
+
+    <h3 class="mt-20">⏱️ Ocupación por Horas</h3>
+    <table id="tablaHoras">
+        <thead><tr><th>Rango Horario</th><th>N° Servicios</th></tr></thead>
+        <tbody><tr><td colspan="2">Cargando datos...</td></tr></tbody>
+    </table>
+
+    <a href="menu.html" class="footer-link mt-20">⬅️ Volver al Menú Principal</a>
+</div>
+
+<script src="config.js"></script>
+<script>
+    verificarSesion(true);
+    let historialVentas = [];
+
+    const d = new Date();
+    const stringLima = d.toLocaleString("en-US", { timeZone: "America/Lima" });
+    const fechaPeru = new Date(stringLima);
+
+    const anio = fechaPeru.getFullYear();
+    const mes = String(fechaPeru.getMonth() + 1).padStart(2, '0');
+    const dia = String(fechaPeru.getDate()).padStart(2, '0');
+
+    document.getElementById('estHasta').value = `${anio}-${mes}-${dia}`;
+    document.getElementById('estDesde').value = `${anio}-${mes}-01`;
+
+    function obtenerCampo(obj, nombres) {
+        for (const n of nombres) {
+            if (obj[n] !== undefined && obj[n] !== null && obj[n] !== "") return obj[n];
+        }
+        return null;
+    }
+
+    const HORA_APERTURA = 8;   // 8 am
+    const HORA_CIERRE = 23;    // 11 pm
+
+    // Convierte "15:21:00" o "1899-12-30T20:21:00.000Z" a minutos del día (hora de Lima)
+    function aMinutos(x) {
+        if (x === null || x === undefined) return NaN;
+        const s = String(x).trim();
+        if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+            const dt = new Date(s);
+            if (isNaN(dt.getTime())) return NaN;
+            const p = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'America/Lima' }).format(dt).split(':');
+            return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+        }
+        const m = s.match(/(\d{1,2}):(\d{2})/);
+        return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : NaN;
+    }
+
+    // Pedir datos con caché: aparecen al instante si ya se visitó otra pantalla antes
+    obtenerDatosGenerales(function(data) {
+        if (!data) {
+            document.getElementById('txtDiaTop').textContent = "Error de conexión";
+            document.getElementById('txtHoraTop').textContent = "Error de conexión";
+            return;
+        }
+        historialVentas = data.ventas || [];
+        document.getElementById('txtDebug').textContent = `${historialVentas.length} registros totales cargados del Excel.`;
+        try {
+            analizarTendenciasComerciales();
+        } catch (err) {
+            document.getElementById('txtDebug').textContent = "Error: " + err.message;
+            console.error(err);
+        }
+    });
+
+    function analizarTendenciasComerciales() {
+        const desde = document.getElementById('estDesde').value;
+        const hasta = document.getElementById('estHasta').value;
+
+        const filtradas = historialVentas.filter(v => {
+            const fRaw = obtenerCampo(v, ['Fecha', 'fecha', 'FECHA']);
+            if (!fRaw) return false;
+            const f = String(fRaw).split("T")[0].substring(0, 10);
+            return (f >= desde && f <= hasta);
+        });
+
+        document.getElementById('txtDebug').textContent =
+            `${historialVentas.length} registros totales · ${filtradas.length} dentro del rango seleccionado.`;
+
+        const conteoDias = { "Lunes":0, "Martes":0, "Miércoles":0, "Jueves":0, "Viernes":0, "Sábado":0, "Domingo":0 };
+        const conteoHoras = {};
+        const diasMapeo = { 'monday': 'Lunes', 'tuesday': 'Martes', 'wednesday': 'Miércoles', 'thursday': 'Jueves', 'friday': 'Viernes', 'saturday': 'Sábado', 'sunday': 'Domingo' };
+
+        filtradas.forEach(v => {
+            const fRaw = obtenerCampo(v, ['Fecha', 'fecha', 'FECHA']);
+            if (fRaw) {
+                const fClean = String(fRaw).split("T")[0].substring(0, 10);
+                const dateObj = new Date(fClean + "T12:00:00");
+                if (!isNaN(dateObj.getTime())) {
+                    const engDay = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(dateObj).toLowerCase();
+                    const espDay = diasMapeo[engDay];
+                    if (espDay) conteoDias[espDay]++;
+                }
+            }
+
+            const ini = aMinutos(obtenerCampo(v, ['Hora Inicio', 'Hora_Inicio', 'hora_inicio']));
+            const fin = aMinutos(obtenerCampo(v, ['Hora Fin', 'Hora_Fin', 'hora_fin']));
+
+            if (!isNaN(ini)) {
+                const hIni = Math.floor(ini / 60);
+                let hFin = !isNaN(fin) ? Math.floor((fin - 1) / 60) : hIni;
+                if (hFin < hIni) hFin = hIni;
+
+                for (let h = hIni; h <= hFin; h++) {
+                    if (h < HORA_APERTURA || h > HORA_CIERRE) continue;
+                    const bloque = String(h).padStart(2, '0') + ":00 hrs";
+                    conteoHoras[bloque] = (conteoHoras[bloque] || 0) + 1;
+                }
+            }
+        });
+
+        let htmlDias = ""; let maxD = -1; let diaTop = "-";
+        Object.keys(conteoDias).forEach(dia => {
+            if (conteoDias[dia] > maxD) { maxD = conteoDias[dia]; diaTop = dia; }
+            htmlDias += `<tr><td>${dia}</td><td><b>${conteoDias[dia]}</b> servicios</td></tr>`;
+        });
+        document.getElementById('tablaDias').querySelector('tbody').innerHTML = htmlDias;
+        document.getElementById('txtDiaTop').textContent = maxD > 0 ? `${diaTop} (${maxD} visitas)` : "Sin datos";
+
+        let htmlHoras = ""; let maxH = -1; let horaTop = "-";
+        const horasOrdenadas = Object.keys(conteoHoras).sort((a, b) => parseInt(a) - parseInt(b));
+
+        if (horasOrdenadas.length === 0) {
+            document.getElementById('tablaHoras').querySelector('tbody').innerHTML = "<tr><td colspan='2'>Sin datos en el rango</td></tr>";
+            document.getElementById('txtHoraTop').textContent = "Sin datos";
+            return;
+        }
+
+        horasOrdenadas.forEach(h => {
+            if (conteoHoras[h] > maxH) { maxH = conteoHoras[h]; horaTop = h; }
+            htmlHoras += `<tr><td>${h}</td><td><b>${conteoHoras[h]}</b> servicios</td></tr>`;
+        });
+        document.getElementById('tablaHoras').querySelector('tbody').innerHTML = htmlHoras;
+        document.getElementById('txtHoraTop').textContent = `${horaTop} (${maxH} citas)`;
+    }
+</script>
+</body>
+</html>

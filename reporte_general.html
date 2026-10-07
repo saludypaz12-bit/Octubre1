@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte General · Pro Salud Paz</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container container-wide">
+    <h2>Reporte General</h2>
+
+    <div class="card-soft">
+        <h3>📅 Rango de Fechas</h3>
+        <div class="flex-filtros">
+            <div class="filtro-group">
+                <label>Desde</label>
+                <input type="date" id="rgDesde">
+            </div>
+            <div class="filtro-group">
+                <label>Hasta</label>
+                <input type="date" id="rgHasta">
+            </div>
+        </div>
+        <button onclick="calcularReporte()" class="btn-green">📊 Calcular Reporte</button>
+        <div class="flex-filtros" style="margin-top:10px; margin-bottom:0;">
+            <button class="btn-inline" onclick="rangoRapido('mes')">Este mes</button>
+            <button class="btn-inline" onclick="rangoRapido('trimestre')">Últimos 3 meses</button>
+            <button class="btn-inline" onclick="rangoRapido('todo')">Todo</button>
+        </div>
+    </div>
+
+    <p id="txtDebug" class="text-center-muted mb-15">Cargando datos del Excel...</p>
+
+    <div class="grid-totales">
+        <div class="box box-success">Ingresos<span class="txt-success" id="rgIngresos">S/. 0.00</span></div>
+        <div class="box box-danger">Egresos<span class="txt-danger" id="rgEgresos">S/. 0.00</span></div>
+        <div class="box box-lavender">Caja Neta<span class="txt-lavender" id="rgNeto">S/. 0.00</span></div>
+    </div>
+
+    <div class="grid-totales" style="margin-top: 10px; margin-bottom: 5px;">
+        <div class="box box-gold-soft">Comisión Chicas<span class="txt-gold" id="rgComision">S/. 0.00</span></div>
+        <div class="box box-green-soft">Ganancia Real Local<span class="txt-success" id="rgGanancia">S/. 0.00</span></div>
+    </div>
+    <p class="mini-note">Ganancia Real = Ingresos − Egresos − Comisión</p>
+
+    <h3 class="mt-20">🗓️ Detalle por Mes</h3>
+    <table id="tablaMeses">
+        <thead><tr><th>Mes</th><th>Ingresos</th><th>Egresos</th><th>Ganancia</th></tr></thead>
+        <tbody><tr><td colspan="4">Cargando datos...</td></tr></tbody>
+    </table>
+
+    <a href="menu.html" class="footer-link mt-20">⬅️ Volver al Menú Principal</a>
+</div>
+
+<script src="config.js"></script>
+<script>
+    verificarSesion(true);
+    let ventas = [], egresos = [];
+
+    function hoyLima() {
+        const f = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Lima" }));
+        return f;
+    }
+    function aISO(f) {
+        return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+    }
+    const fISO = (x) => String(x || "").substring(0, 10);
+    const soles = (n) => "S/. " + n.toFixed(2);
+
+    function rangoRapido(tipo) {
+        const h = hoyLima();
+        let desde = new Date(h.getFullYear(), h.getMonth(), 1);
+        if (tipo === 'trimestre') desde = new Date(h.getFullYear(), h.getMonth() - 2, 1);
+        if (tipo === 'todo') desde = new Date(2000, 0, 1);
+        document.getElementById('rgDesde').value = aISO(desde);
+        document.getElementById('rgHasta').value = aISO(h);
+        calcularReporte();
+    }
+
+    function calcularReporte() {
+        const desde = document.getElementById('rgDesde').value;
+        const hasta = document.getElementById('rgHasta').value;
+        if (!desde || !hasta) return;
+
+        const meses = {};
+        const mesDe = (f) => {
+            const k = f.substring(0, 7);
+            if (!meses[k]) meses[k] = { ing: 0, egr: 0, com: 0 };
+            return meses[k];
+        };
+
+        let ing = 0, egr = 0, com = 0, nVentas = 0;
+
+        ventas.forEach(v => {
+            const f = fISO(v.Fecha || v.fecha);
+            if (f >= desde && f <= hasta) {
+                const c = parseFloat(v.costo_total || 0);
+                const g = parseFloat(v.ganancia_terapeuta || 0);
+                ing += c; com += g; nVentas++;
+                const m = mesDe(f); m.ing += c; m.com += g;
+            }
+        });
+
+        egresos.forEach(e => {
+            const f = fISO(e.fecha);
+            if (f >= desde && f <= hasta) {
+                const x = parseFloat(e.monto || 0);
+                egr += x;
+                mesDe(f).egr += x;
+            }
+        });
+
+        const neto = ing - egr;
+        document.getElementById('rgIngresos').textContent = soles(ing);
+        document.getElementById('rgEgresos').textContent = soles(egr);
+        document.getElementById('rgNeto').textContent = soles(neto);
+        document.getElementById('rgComision').textContent = soles(com);
+        document.getElementById('rgGanancia').textContent = soles(neto - com);
+        document.getElementById('txtDebug').textContent = `${nVentas} servicios en el rango seleccionado.`;
+
+        const nombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        const claves = Object.keys(meses).sort();
+        document.getElementById('tablaMeses').querySelector('tbody').innerHTML = claves.length
+            ? claves.map(k => {
+                const m = meses[k];
+                const [a, mm] = k.split('-');
+                return `<tr><td>${nombres[parseInt(mm, 10) - 1]} ${a}</td><td>${soles(m.ing)}</td><td>${soles(m.egr)}</td><td><b>${soles(m.ing - m.egr - m.com)}</b></td></tr>`;
+            }).join('')
+            : "<tr><td colspan='4'>Sin datos en el rango</td></tr>";
+    }
+
+    rangoRapido('trimestre');
+
+    obtenerDatosGenerales(function(data) {
+        if (!data) {
+            document.getElementById('txtDebug').textContent = "Error de conexión.";
+            return;
+        }
+        ventas = data.ventas || [];
+        egresos = data.egresos || [];
+        calcularReporte();
+    });
+</script>
+</body>
+</html>

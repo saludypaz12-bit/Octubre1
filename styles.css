@@ -1,0 +1,551 @@
+/* =========================================================
+   PRO SALUD PAZ — Tema "Pétalo Lavanda"
+   Paleta: blush cream / rosa mauve / lavanda pastel / dorado suave
+   TODO el CSS del sistema vive aquí. Ningún archivo .html debe
+   llevar <style> propio ni estilos "inline" — así se edita una
+   sola vez y se refleja en todas las pantallas (más rápido y
+   más fácil de mantener).
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Quicksand:wght@500;600;700&display=swap');
+
+:root {
+    --blush-bg: #FBF1EE;
+    --rose: #C97C8A;
+    --rose-dark: #A85C6C;
+    --mauve: #8E5B6D;
+    --lavender: #B79FD1;
+    --lavender-dark: #8F6FB0;
+    --lavender-bg: #F3EEF8;
+    --gold: #D9A566;
+    --plum-text: #4A3238;
+    --plum-soft: #8A7377;
+    --card-bg: linear-gradient(160deg, #3B2350 0%, #1F1330 100%);
+    --card-text: #D8D3D6;
+    --line-soft: #F0DCDD;
+    --success: #7FA88A;
+    --danger: #C4626B;
+
+    /* Color único y profesional para TODOS los botones del sistema */
+    --btn-color-1: #D98CA6;
+    --btn-color-2: #A374C7;
+    --btn-shadow: rgba(163, 116, 199, 0.30);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Quicksand', 'Segoe UI', sans-serif;
+    background: linear-gradient(180deg, var(--blush-bg) 0%, #EDE1F1 100%);
+    min-height: 100vh;
+    margin: 0;
+    padding: 24px 15px;
+    display: flex;
+    justify-content: center;
+    color: var(--plum-text);
+}
+
+.container {
+    width: 100%;
+    max-width: 420px;
+    background: var(--card-bg);
+    color: var(--card-text);
+    padding: 28px 24px;
+    border-radius: 22px;
+    box-shadow: 0 12px 32px rgba(143, 111, 176, 0.16);
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.container::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--rose) 0%, var(--lavender-dark) 55%, var(--gold) 100%);
+}
+
+.logo-header {
+    display: block;
+    width: 110px;       /* Ajusta este número si lo quieres aún más grande */
+    height: 110px;      /* Debe ser igual al ancho para mantener el círculo */
+    margin: 0 auto 4px auto;
+    border-radius: 50%;
+    object-fit: contain; /* Asegura que la imagen se adapte bien al círculo */
+}
+h2 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    text-align: center;
+    color: var(--mauve);
+    margin-top: 6px;
+    margin-bottom: 4px;
+    font-size: 24px;
+    letter-spacing: 0.3px;
+}
+
+h2::after {
+    content: "";
+    display: block;
+    width: 46px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold) 0%, var(--lavender-dark) 100%);
+    border-radius: 3px;
+    margin: 10px auto 20px auto;
+}
+
+h3 {
+    font-family: 'Playfair Display', serif;
+    text-align: left;
+    font-size: 17px;
+    font-weight: 600;
+    border-left: 4px solid var(--rose);
+    padding-left: 10px;
+    color: var(--mauve);
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 600;
+    color: var(--plum-soft);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1.5px solid var(--line-soft);
+    border-radius: 14px;
+    font-size: 16px;
+    font-family: 'Quicksand', sans-serif;
+    box-sizing: border-box;
+    background-color: #FFFCFB;
+    color: var(--plum-text);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+textarea { resize: none; }
+
+input::placeholder { color: #C7B3B6; }
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--lavender-dark);
+    outline: none;
+    background-color: #fff;
+    box-shadow: 0 0 0 4px rgba(143, 111, 176, 0.14);
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--btn-color-1) 0%, var(--btn-color-2) 100%);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Quicksand', sans-serif;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    margin-top: 8px;
+    box-shadow: 0 6px 16px var(--btn-shadow);
+}
+
+button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px var(--btn-shadow);
+}
+
+button:active { transform: translateY(0); }
+
+button:disabled {
+    background: #E3C7CB;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}
+
+button.btn-green {
+    background: linear-gradient(135deg, var(--btn-color-1) 0%, var(--btn-color-2) 100%);
+    box-shadow: 0 6px 16px var(--btn-shadow);
+}
+
+button.btn-full { width: 100%; margin-bottom: 10px; }
+
+button.btn-inline { padding: 10px; font-size: 14px; margin-top: 5px; }
+button.btn-mauve { background: linear-gradient(135deg, var(--btn-color-1) 0%, var(--btn-color-2) 100%); }
+
+.footer-link {
+    display: block;
+    text-align: center;
+    margin-top: 16px;
+    color: var(--rose-dark);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.footer-link:hover { text-decoration: underline; }
+
+.grid-totales {
+    display: flex;
+    gap: 10px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.box {
+    flex: 1;
+    padding: 14px 6px;
+    background: linear-gradient(160deg, #FBEEEF 0%, #F1E6F1 100%);
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--plum-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.box span {
+    display: block;
+    font-family: 'Quicksand', 'Segoe UI', sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-size: 18px;
+    color: var(--mauve);
+    margin-top: 6px;
+    font-weight: 700;
+}
+
+.box-success { background: #EAF2EC; }
+.box-danger  { background: #FFF3F4; }
+.box-lavender { background: #F0EAF7; }
+.box-gold-soft { background: #FFFBF0; border: 1.5px solid var(--line-soft); }
+.box-green-soft { background: #F0FAF2; border: 1.5px solid var(--line-soft); }
+.box span.txt-success { color: var(--success); }
+.box span.txt-danger { color: var(--danger); }
+.box span.txt-lavender { color: var(--lavender-dark); }
+.box span.txt-gold { color: var(--gold); }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+th, td {
+    padding: 11px 8px;
+    border-bottom: 1px solid var(--line-soft);
+    text-align: left;
+}
+
+th {
+    background: #FCF3F2;
+    color: var(--plum-soft);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.card { margin-bottom: 22px; padding-bottom: 4px; }
+
+.card-soft {
+    background: #FFF9F8;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1.5px solid var(--line-soft);
+    margin-bottom: 15px;
+}
+
+.card-gold-dash {
+    background: #FDF9F2;
+    border: 1px dashed var(--gold);
+    padding: 15px;
+    margin-bottom: 15px;
+    text-align: left;
+    font-size: 14px;
+    text-transform: none;
+}
+.card-gold-dash.small { padding: 12px; font-size: 13px; }
+
+.card-gold-solid {
+    background: #FDF9F2;
+    border: 1.5px solid var(--gold);
+    padding: 14px;
+    margin-bottom: 15px;
+}
+
+.row-between { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.row-between.muted { color: var(--plum-soft); }
+.row-between.gold { color: var(--gold); font-weight: bold; }
+.row-between.total { color: var(--success); font-size: 16px; }
+
+.divider-dashed { border: 0; border-top: 1px dashed var(--line-soft); margin: 8px 0; }
+
+.text-center-muted { text-align: center; font-size: 13px; color: var(--plum-soft); }
+
+.mini-info {
+    font-size: 13px;
+    color: var(--plum-soft);
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    min-height: 16px;
+}
+
+.mt-neg { margin-top: -10px; }
+.mb-15 { margin-bottom: 15px; }
+.mb-18 { margin-bottom: 18px; }
+.mt-20 { margin-top: 20px; }
+
+#txtBienvenida, .txt-bienvenida {
+    text-align: center;
+    color: var(--plum-soft);
+    font-size: 13px;
+    margin-top: -12px;
+    margin-bottom: 18px;
+}
+
+#mensajeError {
+    color: var(--danger);
+    text-align: center;
+    margin-top: 12px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.container-wide { max-width: 480px !important; }
+
+.menu-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+
+.btn-menu {
+    display: block;
+    text-align: center;
+    padding: 14px;
+    color: white !important;
+    text-decoration: none;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    background: linear-gradient(135deg, var(--btn-color-1) 0%, var(--btn-color-2) 100%) !important;
+    box-shadow: 0 4px 12px var(--btn-shadow);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-menu:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px var(--btn-shadow);
+    text-decoration: none !important;
+}
+
+.flex-filtros { display: flex; gap: 10px; margin-bottom: 12px; }
+.flex-filtros .filtro-group { flex: 1; }
+
+table tr.destacado td {
+    font-weight: 700;
+    color: var(--mauve);
+    background-color: #FFFDFD;
+}
+
+.dash-titulo {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: var(--plum-soft);
+    text-align: center;
+    margin: 18px 0 8px 0;
+    font-weight: 700;
+}
+
+.mini-note {
+    font-size: 11px;
+    color: var(--plum-soft);
+    text-align: center;
+    margin-top: 5px;
+    font-weight: 600;
+}
+
+.seccion-admin {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    border-top: 1px dashed var(--line-soft);
+    padding-top: 10px;
+}
+.seccion-admin.visible { display: flex; }
+
+.toggle-container {
+    display: flex;
+    background: var(--lavender-bg);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 15px;
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 8px;
+    color: var(--lavender-dark);
+    transition: all 0.2s;
+    box-shadow: none;
+    margin-top: 0;
+}
+
+.toggle-btn.active {
+    background: var(--card-bg);
+    color: var(--rose-dark);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.podio-icon {
+    font-size: 18px;
+    margin-right: 5px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.badge-comision {
+    font-size: 11px;
+    color: var(--plum-soft);
+    display: block;
+    font-weight: 600;
+}
+
+/* =========================================================
+   ➕ Banner morado real para el logo (menu.html)
+   ========================================================= */
+.logo-banner {
+    background: linear-gradient(145deg, #7A55B3 0%, #4A2E7D 55%, #341D5C 100%);
+    border: 1.5px solid var(--gold);
+    border-radius: 18px;
+    padding: 24px 10px 18px 10px; /* Aumentado un poco el espacio interno */
+    margin: -6px -2px 18px -2px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(58, 32, 92, 0.35);
+}
+
+.logo-banner .logo-header {
+    background: transparent;
+    padding: 4px;
+    border: 2px solid var(--gold);
+    width: 135px !important;   /* ¡Logo BIEN grande! */
+    height: 135px !important;  /* Mantiene el círculo perfecto */
+    object-fit: contain;
+}
+
+.logo-banner h2 {
+    color: #fff;
+    font-size: 16px;    /* Letra MÁS pequeña y sutil */
+    font-weight: 600;   /* Menos gruesa para que no compita con el logo */
+    letter-spacing: 0.5px;
+    margin-top: 14px;   /* Separación del logo grande */
+    margin-bottom: 0;
+}
+
+.logo-banner h2::after {
+    background: var(--gold);
+    margin: 8px auto 0 auto; /* Ajustada la línea decorativa de abajo */
+}
+
+/* =========================================================
+   💡 Toggle de tema claro / oscuro (botón lámpara)
+   ========================================================= */
+body.modo-claro {
+    --card-bg: #FFFFFF;
+    --card-text: var(--plum-text);
+}
+
+.theme-toggle-btn {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: linear-gradient(135deg, var(--btn-color-1) 0%, var(--btn-color-2) 100%);
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--btn-shadow);
+    z-index: 999;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+/* =========================================================
+   🌙 MODO NOCHE — botones y textos en pastel
+   ========================================================= */
+body:not(.modo-claro) {
+    --btn-color-1: #E3D4F7;
+    --btn-color-2: #C9B5EE;
+    --btn-shadow: rgba(201, 181, 238, 0.28);
+}
+
+/* Botones: fondo pastel con letra oscura para que se lea */
+body:not(.modo-claro) button,
+body:not(.modo-claro) .btn-menu,
+body:not(.modo-claro) .theme-toggle-btn {
+    color: #3B2350 !important;
+}
+
+body:not(.modo-claro) button:disabled {
+    color: #7A6A7E !important;
+}
+
+/* Títulos y textos que se perdían sobre el fondo oscuro */
+body:not(.modo-claro) h2,
+body:not(.modo-claro) h3 {
+    color: #E9DDF8;
+}
+
+body:not(.modo-claro) .logo-banner h2 {
+    color: #fff;
+}
+
+body:not(.modo-claro) .dash-titulo,
+body:not(.modo-claro) .mini-note,
+body:not(.modo-claro) .text-center-muted,
+body:not(.modo-claro) #txtBienvenida,
+body:not(.modo-claro) .txt-bienvenida {
+    color: #CFC3DC;
+}
+
+body:not(.modo-claro) .footer-link {
+    color: #F2B8CC !important;
+}
+
+/* Tablas: encabezado suave en vez de bloque claro */
+body:not(.modo-claro) th {
+    background: rgba(255, 255, 255, 0.08);
+    color: #E9DDF8;
+}
+
+body:not(.modo-claro) td {
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+}

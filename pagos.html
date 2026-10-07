@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquidación de Terapeutas · Pro Salud Paz</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>Control de Comisiones</h2>
+
+    <div class="card-soft">
+        <h3>📅 Rango de Liquidación</h3>
+        <div class="flex-filtros">
+            <div class="filtro-group">
+                <label>Desde</label>
+                <input type="date" id="fechaDesde">
+            </div>
+            <div class="filtro-group">
+                <label>Hasta</label>
+                <input type="date" id="fechaHasta">
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 4px;">
+            <label>Seleccionar Terapeuta</label>
+            <select id="selectTerapeuta">
+                <option value="" disabled selected>-- Seleccionar Terapeuta --</option>
+            </select>
+        </div>
+        <p id="infoTerapeuta" class="mini-info"></p>
+
+        <button onclick="calcularComisionesChica()" class="btn-menu btn-mauve btn-inline" style="width: 100%; border: none; cursor: pointer;">🔍 Buscar Cuentas</button>
+    </div>
+
+    <div class="card-gold-solid">
+        <h3>🎁 Incentivo / Bono Opcional</h3>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Monto del Bono (S/.)</label>
+            <input type="number" step="0.10" id="txtBono" placeholder="S/. 0.00 (Dejar vacío si no aplica)" oninput="recalcularConBono()">
+        </div>
+    </div>
+
+    <div class="card mb-15">
+        <div class="row-between">
+            <span>N° de Atenciones:</span>
+            <b id="lblCantidadServicios">0</b>
+        </div>
+        <div class="row-between">
+            <span>Monto Bruto Total:</span>
+            <b id="lblBrutoChica">S/. 0.00</b>
+        </div>
+        <div class="row-between muted">
+            <span>Comisión Base (50%):</span>
+            <span id="lblBaseChica">S/. 0.00</span>
+        </div>
+        <div class="row-between gold">
+            <span>Bono Asignado (+):</span>
+            <span id="lblBonoAplicado">S/. 0.00</span>
+        </div>
+        <hr class="divider-dashed">
+        <div class="row-between total" style="margin-bottom: 0;">
+            <span><b>Total Neto a Pagar:</b></span>
+            <b id="lblPagoChica">S/. 0.00</b>
+        </div>
+    </div>
+
+    <button onclick="generarPDF()" class="btn-green btn-full">📄 Descargar Comprobante PDF</button>
+    <button onclick="generarImagen()" class="btn-menu btn-mauve btn-full" style="border:none; cursor:pointer;">🖼️ Descargar como Imagen</button>
+
+    <div class="menu-grid">
+        <a href="menu.html" class="btn-menu" style="background-color: var(--rose);">⬅️ Volver al Menú</a>
+    </div>
+</div>
+
+
+<!-- 🖼️ Plantilla oculta usada solo para generar la imagen del comprobante (html2canvas) -->
+<div id="comprobanteImagen" style="position:absolute; left:-9999px; top:0; width:600px; font-family:'Quicksand', sans-serif; background:#FFFFFF; color:#4A3238;">
+    <div style="background:linear-gradient(135deg,#4B2E7D 0%,#341D5C 100%); padding:22px 26px; display:flex; align-items:center; gap:16px;">
+        <img id="imgLogoComprobante" src="" style="width:56px; height:56px; border-radius:50%; border:2px solid #D9A566; object-fit:contain; background:transparent;">
+        <div>
+            <div style="font-family:'Playfair Display', serif; font-weight:700; font-size:24px; color:#fff;">Pro Salud Paz</div>
+            <div style="font-size:13px; color:#EEDEF5;">COMPROBANTE DE PAGO</div>
+        </div>
+    </div>
+    <div style="height:4px; background:#D9A566;"></div>
+
+    <div style="padding:24px 26px;">
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#8E5B6D; border-left:3px solid #C97C8A; padding-left:8px; margin-bottom:10px;">Datos de la Terapeuta</div>
+        <div style="border:1px solid #D9A566; border-radius:8px; padding:14px 16px; margin-bottom:18px; font-size:14px; line-height:1.9;">
+            <div><b>Terapeuta:</b> <span id="imgNombreChica"></span> &nbsp;&nbsp; <b>DNI:</b> <span id="imgDni"></span></div>
+            <div><b>Periodo:</b> <span id="imgPeriodo"></span> &nbsp;&nbsp; <b>N° Atenciones:</b> <span id="imgCantidad"></span></div>
+        </div>
+
+        <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#8E5B6D; border-left:3px solid #C97C8A; padding-left:8px; margin-bottom:10px;">Detalle de Pago</div>
+        <div style="background:#FDF9F2; border:1px solid #D9A566; border-radius:8px; padding:14px 16px; margin-bottom:18px; font-size:14px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>Monto Bruto Total (atenciones):</span><b id="imgBruto"></b></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:#8C8284;"><span>Comisión Base (50%):</span><span id="imgBase"></span></div>
+            <div style="display:flex; justify-content:space-between; color:#D9A566; font-weight:700;"><span>Bono Asignado:</span><span id="imgBono"></span></div>
+        </div>
+
+        <div style="background:#EBF5ED; border:1px solid #5F8A6A; border-radius:8px; padding:14px 16px; margin-bottom:26px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#5F8A6A; font-weight:700; font-size:15px;">TOTAL NETO GENERADO</span>
+            <span id="imgTotal" style="color:#5F8A6A; font-weight:700; font-size:19px;"></span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6px;">
+            <div style="text-align:center; width:45%;">
+                <div style="border-top:1px solid #8C8284; padding-top:6px; font-size:11px; color:#8C8284;">Firma Terapeuta</div>
+            </div>
+            <div style="text-align:center; width:45%;">
+                <img src="" id="imgFirmaDigital" style="width:190px; height:auto; display:block; margin:0 auto -6px auto;">
+                <div style="border-top:1px solid #8C8284; padding-top:6px; font-size:11px; color:#8C8284;">Firma Administración</div>
+            </div>
+        </div>
+        <div style="text-align:center; font-size:10px; color:#8C8284; margin-top:16px;" id="imgFechaGeneracion"></div>
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+    const sesion = verificarSesion(false);
+
+    const hoyPeru = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Lima"}));
+    const anio = hoyPeru.getFullYear();
+    const mes = String(hoyPeru.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoyPeru.getDate()).padStart(2, '0');
+    const fechaHoyFormateada = `${anio}-${mes}-${dia}`;
+
+    document.getElementById('fechaDesde').value = fechaHoyFormateada;
+    document.getElementById('fechaHasta').value = fechaHoyFormateada;
+
+    let baseVentas = [];
+    let filtradoActualChica = [];
+    let brutoBaseGlobal = 0;
+    let comisionBaseGlobal = 0;
+    let mapaDni = {};
+    let bonoYaRegistrado = false;
+
+    // CARGAR LISTA DE TERAPEUTAS — usando caché para que abra rápido
+    obtenerDatosGenerales(function(data) {
+        if (!data) return;
+        const select = document.getElementById('selectTerapeuta');
+        select.innerHTML = '<option value="" disabled selected>-- Seleccionar Terapeuta --</option>';
+
+        if (data.terapeutas && data.terapeutas.length > 0) {
+            const terapeutasOrdenadas = [...data.terapeutas].sort((a, b) =>
+                a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
+            );
+            terapeutasOrdenadas.forEach(chica => {
+                const nombreUpper = chica.nombre.toUpperCase();
+                const dni = chica.dni ? String(chica.dni).trim() : '';
+                mapaDni[nombreUpper] = dni;
+
+                const option = document.createElement('option');
+                option.value = nombreUpper;
+                option.textContent = nombreUpper;
+                select.appendChild(option);
+            });
+        }
+        baseVentas = data.ventas || [];
+    });
+
+    document.getElementById('selectTerapeuta').addEventListener('change', function() {
+        mostrarInfoTerapeuta(this.value);
+    });
+
+    function mostrarInfoTerapeuta(nombreChica) {
+        const info = document.getElementById('infoTerapeuta');
+        info.textContent = nombreChica ? `👤 ${nombreChica}` : "";
+    }
+
+    function calcularComisionesChica() {
+        const desde = document.getElementById('fechaDesde').value;
+        const hasta = document.getElementById('fechaHasta').value;
+        const nombreChica = document.getElementById('selectTerapeuta').value;
+
+        if (!nombreChica) {
+            alert("Por favor, selecciona una terapeuta primero.");
+            return;
+        }
+
+        mostrarInfoTerapeuta(nombreChica);
+
+        filtradoActualChica = baseVentas.filter(v => {
+            if (!v.Fecha && !v.fecha) return false;
+            const fIso = String(v.Fecha || v.fecha).substring(0, 10).trim();
+            return (fIso >= desde && fIso <= hasta && String(v.Terapeuta || v.terapeuta).toUpperCase().trim() === nombreChica.toUpperCase().trim());
+        });
+
+       brutoBaseGlobal = 0;
+        comisionBaseGlobal = 0;
+        filtradoActualChica.forEach(v => {
+            brutoBaseGlobal += parseFloat(v.costo_total || v.Costo_Total || 0);
+            comisionBaseGlobal += parseFloat(v.ganancia_terapeuta || v.Ganancia_Terapeuta || 0);
+        });
+
+        document.getElementById('txtBono').value = "";
+        bonoYaRegistrado = false;
+
+        document.getElementById('lblCantidadServicios').textContent = filtradoActualChica.length;
+
+        recalcularConBono();
+    }
+
+    function recalcularConBono() {
+        const valorBonoInput = document.getElementById('txtBono').value;
+        const montoBono = valorBonoInput ? parseFloat(valorBonoInput) : 0;
+
+        const comisionBase = comisionBaseGlobal;
+        const totalNetoPagar = comisionBase + montoBono;
+
+        document.getElementById('lblBrutoChica').textContent = "S/. " + brutoBaseGlobal.toFixed(2);
+        document.getElementById('lblBaseChica').textContent = "S/. " + comisionBase.toFixed(2);
+        document.getElementById('lblBonoAplicado').textContent = "S/. " + montoBono.toFixed(2);
+        document.getElementById('lblPagoChica').textContent = "S/. " + totalNetoPagar.toFixed(2);
+    }
+
+    function registrarBonoSiAplica(nombreChica, montoBono) {
+        if (montoBono <= 0 || bonoYaRegistrado) return;
+        bonoYaRegistrado = true;
+
+        const payloadEgreso = {
+            action: 'guardarEgreso',
+            fecha: document.getElementById('fechaDesde').value,
+            concepto: `BONO TERAPEUTA: ${nombreChica}`,
+            monto: montoBono,
+            metodo_pago: 'EFECTIVO',
+            usuario: sesion.usuario || 'CAJERO'
+        };
+
+        fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify(payloadEgreso)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === "success") {
+                invalidarCacheGeneral(); // el bono cambió los egresos: refrescar en la próxima carga
+                console.log("Bono registrado exitosamente en la pestaña de Egresos.");
+            }
+        })
+        .catch(err => console.error("Error al registrar egreso de bono silencioso."));
+    }
+
+    // 📄 Genera el comprobante de pago en PDF, ahora con el logo real del negocio
+    function generarPDF() {
+        const nombreChica = document.getElementById('selectTerapeuta').value;
+        if (!nombreChica) { alert("Selecciona una terapeuta."); return; }
+        if (filtradoActualChica.length === 0) { alert("Primero presiona 'Buscar Cuentas'."); return; }
+
+        const desde = document.getElementById('fechaDesde').value;
+        const hasta = document.getElementById('fechaHasta').value;
+        const dni = mapaDni[nombreChica] || '—';
+
+        const valorBonoInput = document.getElementById('txtBono').value;
+        const montoBono = valorBonoInput ? parseFloat(valorBonoInput) : 0;
+        const comisionBase = comisionBaseGlobal;
+        const totalNeto = comisionBase + montoBono;
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const mauve   = [142, 91, 109];
+        const royal   = [75, 46, 125]; // morado realeza para el encabezado del PDF
+        const rose    = [201, 124, 138];
+        const gold    = [217, 165, 102];
+        const goldBg  = [253, 249, 242];
+        const plum    = [74, 50, 56];
+        const gray    = [140, 130, 132];
+        const green   = [95, 138, 106];
+        const greenBg = [235, 245, 237];
+
+        // ===== ENCABEZADO CON BANDA MORADO REALEZA (para que el logo dorado resalte) =====
+        doc.setFillColor(...royal);
+        doc.rect(0, 0, 210, 40, 'F');
+
+        // 🖼️ Aro dorado detrás del logo (sin relleno blanco, para que el morado
+        // se vea a través del logo transparente y el dorado resalte)
+        doc.setDrawColor(...gold);
+        doc.setLineWidth(1);
+        doc.circle(27, 20, 15, 'S');
+
+        // Logo real del negocio, embebido en Base64
+        try {
+            doc.addImage(LOGO_BASE64, 'PNG', 14, 7, 26, 26);
+        } catch (e) {
+            console.warn("No se pudo insertar el logo en el PDF:", e);
+        }
+
+        // Nombre del negocio + título
+        doc.setFontSize(21);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text("Pro Salud Paz", 48, 20);
+
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(238, 222, 245);
+        doc.text("COMPROBANTE DE PAGO", 48, 28);
+
+        doc.setFillColor(...gold);
+        doc.rect(0, 40, 210, 2.2, 'F');
+
+        // ===== DATOS DE LA TERAPEUTA =====
+        let y = 55;
+        doc.setFillColor(...rose);
+        doc.rect(15, y - 5, 2.2, 6, 'F');
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(...mauve);
+        doc.text("DATOS DE LA TERAPEUTA", 20, y);
+
+        y += 7;
+        doc.setDrawColor(...gold);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(15, y, 180, 30, 3, 3, 'S');
+
+        doc.setFontSize(10);
+        let yi = y + 10;
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(...plum);
+        doc.text("Terapeuta:", 22, yi);
+        doc.setFont(undefined, 'normal');
+        doc.text(nombreChica, 55, yi);
+
+        doc.setFont(undefined, 'bold');
+        doc.text("DNI:", 130, yi);
+        doc.setFont(undefined, 'normal');
+        doc.text(String(dni), 148, yi);
+
+        yi += 10;
+        doc.setFont(undefined, 'bold');
+        doc.text("Periodo:", 22, yi);
+        doc.setFont(undefined, 'normal');
+        doc.text(`${desde}  al  ${hasta}`, 55, yi);
+
+        doc.setFont(undefined, 'bold');
+        doc.text("N° Atenciones:", 130, yi);
+        doc.setFont(undefined, 'normal');
+        doc.text(String(filtradoActualChica.length), 165, yi);
+
+        // ===== DETALLE DE PAGO =====
+        y += 40;
+        doc.setFillColor(...rose);
+        doc.rect(15, y - 5, 2.2, 6, 'F');
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(...mauve);
+        doc.text("DETALLE DE PAGO", 20, y);
+
+        y += 7;
+        doc.setFillColor(...goldBg);
+        doc.setDrawColor(...gold);
+        doc.roundedRect(15, y, 180, 42, 3, 3, 'FD');
+
+        doc.setFontSize(10.5);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(...plum);
+        let yd = y + 10;
+        doc.text("Monto Bruto Total (atenciones):", 22, yd);
+        doc.text(`S/. ${brutoBaseGlobal.toFixed(2)}`, 188, yd, { align: "right" });
+
+        yd += 8;
+        doc.setTextColor(...gray);
+        doc.text("Comisión Base (50%):", 22, yd);
+        doc.text(`S/. ${comisionBase.toFixed(2)}`, 188, yd, { align: "right" });
+
+        yd += 8;
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(...gold);
+        doc.text("Bono Asignado:", 22, yd);
+        doc.text(`S/. ${montoBono.toFixed(2)}`, 188, yd, { align: "right" });
+
+        // ===== TOTAL NETO A PAGAR (destacado) =====
+        y += 48;
+        doc.setFillColor(...greenBg);
+        doc.setDrawColor(...green);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(15, y, 180, 20, 3, 3, 'FD');
+
+        doc.setFontSize(13);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(...green);
+        doc.text("TOTAL NETO GENERADO", 22, y + 13);
+        doc.setFontSize(16);
+        doc.text(`S/. ${totalNeto.toFixed(2)}`, 188, y + 13, { align: "right" });
+
+        // ===== FIRMAS =====
+        y += 38;
+
+        // ✍️ Firma digital real del negocio, embebida en Base64 (se coloca
+        // justo encima de la línea de "Firma Administración" automáticamente)
+        try {
+            doc.addImage(FIRMA_BASE64, 'PNG', 118, y - 20, 68, 27);
+        } catch (e) {
+            console.warn("No se pudo insertar la firma digital en el PDF:", e);
+        }
+
+        doc.setDrawColor(...gray);
+        doc.setLineWidth(0.3);
+        doc.line(25, y, 90, y);
+        doc.line(120, y, 185, y);
+
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(...gray);
+        doc.text("Firma Terapeuta", 57.5, y + 6, { align: "center" });
+        doc.text("Firma Administración", 152.5, y + 6, { align: "center" });
+
+        // ===== PIE DE PÁGINA =====
+        y += 22;
+        doc.setFontSize(8.5);
+        doc.setTextColor(...gray);
+        const fechaGeneracion = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
+        doc.text(`Generado el ${fechaGeneracion}`, 105, y, { align: "center" });
+
+        doc.save(`Liquidacion_${nombreChica}_${desde}_a_${hasta}.pdf`);
+
+        registrarBonoSiAplica(nombreChica, montoBono);
+        alert("Comprobante PDF generado. El bono (si aplica) ya quedó registrado como egreso.");
+    }
+
+    // 🖼️ Genera el mismo comprobante pero como imagen PNG (usando la plantilla oculta + html2canvas)
+    function generarImagen() {
+        const nombreChica = document.getElementById('selectTerapeuta').value;
+        if (!nombreChica) { alert("Selecciona una terapeuta."); return; }
+        if (filtradoActualChica.length === 0) { alert("Primero presiona 'Buscar Cuentas'."); return; }
+
+        const desde = document.getElementById('fechaDesde').value;
+        const hasta = document.getElementById('fechaHasta').value;
+        const dni = mapaDni[nombreChica] || '—';
+
+        const valorBonoInput = document.getElementById('txtBono').value;
+        const montoBono = valorBonoInput ? parseFloat(valorBonoInput) : 0;
+        const comisionBase = comisionBaseGlobal;
+        const totalNeto = comisionBase + montoBono;
+
+        // Rellenar la plantilla oculta con los datos actuales
+
+        // Rellenar la plantilla oculta con los datos actuales
+        document.getElementById('imgLogoComprobante').src = LOGO_BASE64;
+        document.getElementById('imgFirmaDigital').src = FIRMA_BASE64;
+        document.getElementById('imgNombreChica').textContent = nombreChica;
+        document.getElementById('imgDni').textContent = dni;
+        document.getElementById('imgPeriodo').textContent = `${desde} al ${hasta}`;
+        document.getElementById('imgCantidad').textContent = filtradoActualChica.length;
+        document.getElementById('imgBruto').textContent = "S/. " + brutoBaseGlobal.toFixed(2);
+        document.getElementById('imgBase').textContent = "S/. " + comisionBase.toFixed(2);
+        document.getElementById('imgBono').textContent = "S/. " + montoBono.toFixed(2);
+        document.getElementById('imgTotal').textContent = "S/. " + totalNeto.toFixed(2);
+        document.getElementById('imgFechaGeneracion').textContent =
+            "Generado el " + new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
+
+        const elemento = document.getElementById('comprobanteImagen');
+
+        html2canvas(elemento, { scale: 2, backgroundColor: '#FFFFFF' }).then(function(canvas) {
+            const enlace = document.createElement('a');
+            enlace.download = `Liquidacion_${nombreChica}_${desde}_a_${hasta}.png`;
+            enlace.href = canvas.toDataURL('image/png');
+            enlace.click();
+
+            registrarBonoSiAplica(nombreChica, montoBono);
+            alert("Comprobante en imagen generado. El bono (si aplica) ya quedó registrado como egreso.");
+        }).catch(function(err) {
+            console.error("Error generando la imagen:", err);
+            alert("No se pudo generar la imagen. Intenta con el PDF.");
+        });
+    }
+</script>
+</body>
+</html>

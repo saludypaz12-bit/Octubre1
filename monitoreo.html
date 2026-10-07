@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotación y Podio · Pro Salud Paz</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container container-wide">
+    <h2>Monitor y Podio de Ventas</h2>
+    <p style="text-align: center; font-size: 13px; margin-top: -10px; color: var(--plum-soft);">Control de equidad de personal y comisiones acumuladas.</p>
+
+    <div class="toggle-container">
+        <button id="btnModoDiario" class="toggle-btn active" onclick="cambiarModo('diario')">📅 Vista Diaria</button>
+        <button id="btnModoRango" class="toggle-btn" onclick="cambiarModo('rango')">🗓️ Rango de Fechas</button>
+    </div>
+
+    <div class="card-soft">
+        <h3 id="tituloFiltro">📅 Control del Día</h3>
+
+        <div id="wrapperDiario" class="form-group" style="margin-bottom: 0;">
+            <input type="date" id="fechaUnica" onchange="procesarMetricas()">
+        </div>
+
+        <div id="wrapperRango" class="flex-filtros" style="display: none; margin-bottom: 0;">
+            <div class="filtro-group">
+                <label>Desde</label>
+                <input type="date" id="fechaDesde" onchange="procesarMetricas()">
+            </div>
+            <div class="filtro-group">
+                <label>Hasta</label>
+                <input type="date" id="fechaHasta" onchange="procesarMetricas()">
+            </div>
+        </div>
+    </div>
+
+    <div class="card-gold-dash small">
+        ⭐ <strong>Regla de Negocio:</strong> La lista se ordena automáticamente de <strong>Mayor a Menor</strong> producción total. Los iconos 🏆, 🥈 y 🥉 coronan a quienes más han vendido/comisionado en el tiempo seleccionado.
+    </div>
+
+    <h3>📋 Tabla de Posiciones y Comisiones</h3>
+    <table id="tablaRotacion">
+        <thead>
+            <tr>
+                <th>Terapeuta</th>
+                <th>Servicios</th>
+                <th>Total Bruto / Comisión</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="3" style="text-align: center;">Sincronizando registros con Excel...</td></tr>
+        </tbody>
+    </table>
+
+    <div class="menu-grid mt-20">
+        <button onclick="solicitarDatos(true)" class="btn-green" style="margin-bottom: 5px;">🔄 Actualizar Datos Ahora</button>
+        <a href="menu.html" class="footer-link">⬅️ Volver al Menú Principal</a>
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+    verificarSesion(true);
+
+    let cacheVentas = [];
+    let cacheTerapeutas = [];
+    let modoActual = 'diario';
+
+    const hoyPeru = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Lima"}));
+    const anio = hoyPeru.getFullYear();
+    const mes = String(hoyPeru.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoyPeru.getDate()).padStart(2, '0');
+    const fechaHoyStr = `${anio}-${mes}-${dia}`;
+
+    document.getElementById('fechaUnica').value = fechaHoyStr;
+    document.getElementById('fechaDesde').value = fechaHoyStr;
+    document.getElementById('fechaHasta').value = fechaHoyStr;
+
+    // Carga inicial: usa caché si existe (instantáneo) y de todos modos refresca en segundo plano
+    solicitarDatos();
+
+    function cambiarModo(modo) {
+        modoActual = modo;
+
+        const btnDiario = document.getElementById('btnModoDiario');
+        const btnRango = document.getElementById('btnModoRango');
+        const wrapDiario = document.getElementById('wrapperDiario');
+        const wrapRango = document.getElementById('wrapperRango');
+        const titulo = document.getElementById('tituloFiltro');
+
+        if (modo === 'diario') {
+            btnDiario.classList.add('active');
+            btnRango.classList.remove('active');
+            wrapDiario.style.display = 'block';
+            wrapRango.style.display = 'none';
+            titulo.textContent = "📅 Control del Día";
+        } else {
+            btnDiario.classList.remove('active');
+            btnRango.classList.add('active');
+            wrapDiario.style.display = 'none';
+            wrapRango.style.display = 'flex';
+            titulo.textContent = "🗓️ Rango de Fechas Ajustable";
+        }
+        procesarMetricas();
+    }
+
+    function solicitarDatos(forzar) {
+        const tbody = document.getElementById('tablaRotacion').querySelector('tbody');
+
+        if (!forzar) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Conectando con la nube...</td></tr>';
+        } else {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Actualizando...</td></tr>';
+        }
+
+        obtenerDatosGenerales(function(data) {
+            if (!data) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color:var(--danger)">Error al actualizar datos.</td></tr>';
+                return;
+            }
+            cacheVentas = data.ventas || [];
+            cacheTerapeutas = data.terapeutas || [];
+            procesarMetricas();
+        }, forzar);
+    }
+
+    function procesarMetricas() {
+        const tbody = document.getElementById('tablaRotacion').querySelector('tbody');
+
+        let desde = "";
+        let hasta = "";
+
+        if (modoActual === 'diario') {
+            desde = document.getElementById('fechaUnica').value;
+            hasta = document.getElementById('fechaUnica').value;
+        } else {
+            desde = document.getElementById('fechaDesde').value;
+            hasta = document.getElementById('fechaHasta').value;
+        }
+
+        if (!desde || !hasta) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Por favor selecciona las fechas.</td></tr>';
+            return;
+        }
+
+        let resumen = {};
+        cacheTerapeutas.forEach(t => {
+            const nombreNormalizado = t.nombre.toUpperCase().trim();
+            resumen[nombreNormalizado] = { nombre: nombreNormalizado, servicios: 0, totalVendido: 0.0, comisionReal: 0.0 };
+        });
+
+        cacheVentas.forEach(v => {
+            if (!v.Fecha && !v.fecha) return;
+            const fIso = String(v.Fecha || v.fecha).substring(0, 10).trim();
+
+            if (fIso >= desde && fIso <= hasta) {
+                const nombreT = String(v.Terapeuta || v.terapeuta).toUpperCase().trim();
+                const costo = parseFloat(v.costo_total || v.Costo_Total || 0);
+                // 🔧 Usa la comisión real ya guardada en el registro (50% normal / 60% feriado),
+                // en vez de recalcular siempre al 50%. Si algún registro viejo no la tiene, cae a 50%.
+                const comisionGuardada = v.ganancia_terapeuta !== undefined && v.ganancia_terapeuta !== null && v.ganancia_terapeuta !== ""
+                    ? parseFloat(v.ganancia_terapeuta)
+                    : (costo * 0.50);
+
+                if (!resumen[nombreT]) {
+                    resumen[nombreT] = { nombre: nombreT, servicios: 0, totalVendido: 0.0, comisionReal: 0.0 };
+                }
+                resumen[nombreT].servicios += 1;
+                resumen[nombreT].totalVendido += costo;
+                resumen[nombreT].comisionReal += comisionGuardada;
+            }
+        });
+
+        let lista = Object.values(resumen);
+        lista.sort((a, b) => b.totalVendido - a.totalVendido);
+
+        let htmlRows = "";
+        if (lista.length === 0) {
+            htmlRows = '<tr><td colspan="3" style="text-align: center;">No se encontraron registros de terapeutas.</td></tr>';
+        } else {
+            lista.forEach((item, index) => {
+                let iconoPodio = "";
+
+                if (item.totalVendido > 0) {
+                    if (index === 0) iconoPodio = '<span class="podio-icon">🏆</span>';
+                    else if (index === 1) iconoPodio = '<span class="podio-icon">🥈</span>';
+                    else if (index === 2) iconoPodio = '<span class="podio-icon">🥉</span>';
+                    else iconoPodio = '<span class="podio-icon" style="opacity:0.3; font-size:12px;">•</span>';
+                } else {
+                    iconoPodio = '<span class="podio-icon" style="opacity:0.2; font-size:12px;">💤</span>';
+                }
+
+                const comision = item.comisionReal;
+                const filaDestacada = item.totalVendido > 0 ? 'class="destacado"' : '';
+
+                htmlRows += `
+                    <tr ${filaDestacada}>
+                        <td>${iconoPodio} <b>${item.nombre}</b></td>
+                        <td><b>${item.servicios}</b> servicios</td>
+                        <td>
+                            <b>S/. ${item.totalVendido.toFixed(2)}</b>
+                            <span class="badge-comision">Comisión: S/. ${comision.toFixed(2)}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        tbody.innerHTML = htmlRows;
+    }
+</script>
+</body>
+</html>

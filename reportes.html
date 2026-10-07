@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Avanzado · Pro Salud Paz</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="container container-wide">
+    <h2>Control Contable Avanzado</h2>
+    <p id="txtBienvenida" class="txt-bienvenida" style="margin-top:0;"></p>
+
+    <div class="card-soft">
+        <h3>🔍 Filtros de Búsqueda</h3>
+
+        <div class="flex-filtros">
+            <div class="filtro-group">
+                <label>Desde</label>
+                <input type="date" id="filtroDesde">
+            </div>
+            <div class="filtro-group">
+                <label>Hasta</label>
+                <input type="date" id="filtroHasta">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Filtrar por Terapeuta</label>
+            <select id="filtroTerapeuta">
+                <option value="TODAS">-- TODAS LAS CHICAS --</option>
+                <option value="KIMBERLY">KIMBERLY</option>
+                <option value="JASMINE">JASMINE</option>
+                <option value="MILAGROS">MILAGROS</option>
+                <option value="BLANCA">BLANCA</option>
+                <option value="ESTHER">ESTHER</option>
+            </select>
+        </div>
+
+        <button onclick="procesarContabilidad()" class="btn-green">📊 Calcular Periodo</button>
+    </div>
+
+    <div class="card-gold-dash small">
+        <p style="margin: 4px 0;">🔥 <strong>Día más vendido:</strong> <span id="lblDiaPico" style="color: var(--lavender-dark); font-weight: bold;">Calculando...</span></p>
+        <p style="margin: 4px 0;">⏰ <strong>Hora Pico del local:</strong> <span id="lblHoraPico" style="color: var(--gold); font-weight: bold;">Calculando...</span></p>
+    </div>
+
+    <div class="grid-totales mb-15">
+        <div class="box box-success">Ingresos Brutos<span id="lblVentas">S/. 0.00</span></div>
+        <div class="box box-danger">Gastos / Egresos<span id="lblEgresos">S/. 0.00</span></div>
+        <div class="box box-lavender">Caja Líquida<span id="lblCajaLiquida">S/. 0.00</span></div>
+    </div>
+
+    <div class="grid-totales mt-20 mb-18">
+        <div class="box box-gold-soft">Pago Terapeutas<span class="txt-gold" id="lblPagoChicas">S/. 0.00</span></div>
+        <div class="box box-green-soft">Neto Local (50%)<span class="txt-success" id="lblNetoLocal">S/. 0.00</span></div>
+    </div>
+
+    <button onclick="exportarExcelFiltrado()" style="background: linear-gradient(135deg, #217346 0%, #1A5935 100%); margin-bottom: 15px; box-shadow: 0 4px 12px rgba(26,89,53,0.2);">📥 Exportar este Reporte a Excel</button>
+
+    <a href="menu.html" class="footer-link">⬅️ Volver al Menú Principal</a>
+</div>
+
+<script src="config.js"></script>
+<script>
+    const sesion = verificarSesion(true);
+
+    let cacheVentas = [];
+    let cacheEgresos = [];
+    let filtradosVentasGlobal = [];
+
+    if (sesion) {
+        document.getElementById('txtBienvenida').textContent = "Administrador: " + sesion.nombre;
+
+        const hoy = new Date();
+        const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().substring(0, 10);
+        const ultimoDia = hoy.toISOString().substring(0, 10);
+
+        document.getElementById('filtroDesde').value = primerDia;
+        document.getElementById('filtroHasta').value = ultimoDia;
+
+        solicitarDatosDeNube();
+    }
+
+    function solicitarDatosDeNube() {
+        obtenerDatosGenerales(function(data) {
+            if (!data) {
+                alert("Error al sincronizar datos contables en tiempo real.");
+                return;
+            }
+            cacheVentas = data.ventas || [];
+            cacheEgresos = data.egresos || [];
+            procesarContabilidad();
+        });
+    }
+
+    function procesarContabilidad() {
+        const desde = document.getElementById('filtroDesde').value;
+        const hasta = document.getElementById('filtroHasta').value;
+        const chicaSel = document.getElementById('filtroTerapeuta').value;
+
+        const ventasFiltradas = cacheVentas.filter(v => {
+            if (!v.Fecha) return false;
+            const fIso = String(v.Fecha).substring(0, 10);
+            const cumpleFecha = (fIso >= desde && fIso <= hasta);
+            const cumpleChica = (chicaSel === "TODAS" || String(v.Terapeuta).toUpperCase() === chicaSel.toUpperCase());
+            return cumpleFecha && cumpleChica;
+        });
+
+        filtradosVentasGlobal = ventasFiltradas;
+
+        const egresosFiltrados = cacheEgresos.filter(e => {
+            if (!e.fecha) return false;
+            const fIso = String(e.fecha).substring(0, 10);
+            return (fIso >= desde && fIso <= hasta);
+        });
+
+        let brutoVentas = 0;
+        let pagoChicas = 0;
+        ventasFiltradas.forEach(v => {
+            brutoVentas += parseFloat(v.costo_total || 0);
+            // 🔧 Suma la comisión real ya guardada (50% normal / 60% feriado)
+            pagoChicas += parseFloat(v.ganancia_terapeuta || 0);
+        });
+
+        let brutoEgresos = 0;
+        egresosFiltrados.forEach(e => brutoEgresos += parseFloat(e.monto || 0));
+
+        let cajaLiquida = brutoVentas - brutoEgresos;
+
+        let netoLocal = (brutoVentas - pagoChicas) - brutoEgresos;
+
+        document.getElementById('lblVentas').textContent = "S/. " + brutoVentas.toFixed(2);
+        document.getElementById('lblEgresos').textContent = "S/. " + brutoEgresos.toFixed(2);
+        document.getElementById('lblCajaLiquida').textContent = "S/. " + cajaLiquida.toFixed(2);
+        document.getElementById('lblPagoChicas').textContent = "S/. " + pagoChicas.toFixed(2);
+        document.getElementById('lblNetoLocal').textContent = "S/. " + netoLocal.toFixed(2);
+
+        calcularMetricasEstrategicas(ventasFiltradas);
+    }
+
+    function calcularMetricasEstrategicas(ventas) {
+        if (ventas.length === 0) {
+            document.getElementById('lblDiaPico').textContent = "Sin datos en el rango";
+            document.getElementById('lblHoraPico').textContent = "Sin datos en el rango";
+            return;
+        }
+
+        const conteoDias = {};
+        const conteoHoras = {};
+
+        ventas.forEach(v => {
+            if (v.Fecha) {
+                const fechaObj = new Date(String(v.Fecha).substring(0, 10) + "T12:00:00");
+                const opciones = { weekday: 'long' };
+                const nombreDia = new Intl.DateTimeFormat('es-ES', opciones).format(fechaObj);
+                const diaCapitalizado = nombreDia.charAt(0).toUpperCase() + nombreDia.slice(1);
+                conteoDias[diaCapitalizado] = (conteoDias[diaCapitalizado] || 0) + 1;
+            }
+
+            let horaStr = v["Hora Inicio"] || v.hora_registro;
+            if (horaStr && String(horaStr).includes(":")) {
+                const partes = String(horaStr).split(":");
+                let soloHora = partes[0].trim();
+                if(soloHora.includes(" ")) {
+                    soloHora = soloHora.split(" ")[1] || soloHora;
+                }
+                const BloqueHora = soloHora + ":00 hrs";
+                conteoHoras[BloqueHora] = (conteoHoras[BloqueHora] || 0) + 1;
+            }
+        });
+
+        let diaTop = "No definido"; let maxDia = 0;
+        Object.keys(conteoDias).forEach(d => {
+            if (conteoDias[d] > maxDia) { maxDia = conteoDias[d]; diaTop = d; }
+        });
+
+        let horaTop = "No definida"; let maxHora = 0;
+        Object.keys(conteoHoras).forEach(h => {
+            if (conteoHoras[h] > maxHora) { maxHora = conteoHoras[h]; horaTop = h; }
+        });
+
+        document.getElementById('lblDiaPico').textContent = `${diaTop} (${maxDia} servicios)`;
+        document.getElementById('lblHoraPico').textContent = `${horaTop} (${maxHora} citas)`;
+    }
+
+    function exportarExcelFiltrado() {
+        if (filtradosVentasGlobal.length === 0) {
+            alert("No hay registros en el rango seleccionado para poder exportar.");
+            return;
+        }
+
+        const estructuraHoja = XLSX.utils.json_to_sheet(filtradosVentasGlobal);
+        const libroVacio = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(libroVacio, estructuraHoja, "Reporte_Contable");
+
+        const desde = document.getElementById('filtroDesde').value;
+        const hasta = document.getElementById('filtroHasta').value;
+        const chica = document.getElementById('filtroTerapeuta').value;
+
+        XLSX.writeFile(libroVacio, `ProSaludPaz_Reporte_${chica}_${desde}_a_${hasta}.xlsx`);
+    }
+</script>
+</body>
+</html>

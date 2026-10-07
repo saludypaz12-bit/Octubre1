@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú Principal ·  Salud Y Paz</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="pagina-menu">
+
+<div class="container">
+<div class="logo-banner">
+        <img id="imgLogo" class="logo-header" alt="Logo Pro Salud Paz">
+        <h2>SALUD Y PAZ </h2>
+    </div>
+    <p id="txtBienvenida" class="mt-neg mb-15"></p>
+
+    <p class="dash-titulo">📊 Resumen General (Mes Actual)</p>
+
+    <div class="grid-totales">
+        <div class="box box-success">Ventas Brutas<span class="txt-success" id="mVentas">S/. 0.00</span></div>
+        <div class="box box-danger">Egresos<span class="txt-danger" id="mEgresos">S/. 0.00</span></div>
+        <div class="box box-lavender">Caja Neta<span class="txt-lavender" id="mNeto">S/. 0.00</span></div>
+    </div>
+
+    <div class="grid-totales" style="margin-top: 10px; margin-bottom: 5px;">
+        <div class="box box-gold-soft">Comisión Chicas<span class="txt-gold" id="mComision">S/. 0.00</span></div>
+        <div class="box box-green-soft">Ganancia Real Local<span class="txt-success" id="mGananciaReal">S/. 0.00</span></div>
+    </div>
+    <p class="mini-note" id="mNota">Ganancia Real = Caja Neta − Comisión (50%)</p>
+
+    <div class="menu-grid">
+        <a href="registro.html" class="btn-menu btn-menu-rose">✍️ Registrar Servicio</a>
+        <a href="egresos.html" class="btn-menu btn-menu-wine">💸 Registrar Gasto / Egreso</a>
+
+        <div id="seccionAdmin" class="seccion-admin">
+            <p class="dash-titulo" style="margin: 5px 0;">⚙️ Panel Administrativo</p>
+            <a href="pagos.html" class="btn-menu btn-menu-gold">💵 Liquidar Pago de Chicas</a>
+            <a href="estadisticas.html" class="btn-menu btn-menu-lavender">📈 Horas Pico y Estadísticas</a>
+            <a href="monitoreo.html" class="btn-menu btn-menu-purple">🔄 Monitor de Rotación (Hoy)</a>
+            <a href="reporte_general.html" class="btn-menu btn-menu-gold">📑 Reporte General</a>
+        </div>
+
+        <a href="#" class="footer-link" onclick="cerrarSesion()" style="color:#C4626B; margin-top: 20px;">🚪 Cerrar Sesión</a>
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+    const sesion = verificarSesion(false);
+    document.getElementById('imgLogo').src = LOGO_BASE64;
+
+    if (sesion) {
+        document.getElementById('txtBienvenida').textContent = "Bienvenida, " + sesion.nombre;
+
+        if (esAdmin(sesion.rol)) {
+            document.getElementById('seccionAdmin').classList.add('visible');
+        }
+
+        cargarResumenRapido();
+    }
+
+    function cargarResumenRapido() {
+        // Con el caché, la primera vez que se abre el menú puede tardar un poco,
+        // pero las siguientes veces los números aparecen al instante.
+        obtenerDatosGenerales(function(data, esCache) {
+            if (!data) {
+                document.getElementById('mVentas').textContent = "S/. 0.00";
+                document.getElementById('mEgresos').textContent = "S/. 0.00";
+                document.getElementById('mNeto').textContent = "S/. 0.00";
+                document.getElementById('mComision').textContent = "S/. 0.00";
+                document.getElementById('mGananciaReal').textContent = "S/. 0.00";
+                return;
+            }
+
+            const hoy = new Date();
+            const mesActual = hoy.getMonth();
+            const anioActual = hoy.getFullYear();
+
+            const esDelMes = (fechaStr) => {
+                if (!fechaStr) return false;
+                const f = new Date(String(fechaStr).substring(0, 10) + "T00:00:00");
+                return f.getMonth() === mesActual && f.getFullYear() === anioActual;
+            };
+
+            let totalVentas = 0;
+            let comisionesChicas = 0;
+            (data.ventas || []).forEach(v => {
+                if (esDelMes(v.Fecha || v.fecha)) {
+                    totalVentas += parseFloat(v.costo_total || 0);
+                    // 🔧 Suma la comisión real ya guardada (50% normal / 60% feriado)
+                    comisionesChicas += parseFloat(v.ganancia_terapeuta || 0);
+                }
+            });
+
+            let totalEgresos = 0;
+            (data.egresos || []).forEach(e => {
+                if (esDelMes(e.fecha)) {
+                    totalEgresos += parseFloat(e.monto || 0);
+                }
+            });
+
+            const cajaNeta = totalVentas - totalEgresos;
+            const gananciaRealLocal = cajaNeta - comisionesChicas;
+
+            document.getElementById('mVentas').textContent = "S/. " + totalVentas.toFixed(2);
+            document.getElementById('mEgresos').textContent = "S/. " + totalEgresos.toFixed(2);
+            document.getElementById('mNeto').textContent = "S/. " + cajaNeta.toFixed(2);
+            document.getElementById('mComision').textContent = "S/. " + comisionesChicas.toFixed(2);
+            document.getElementById('mGananciaReal').textContent = "S/. " + gananciaRealLocal.toFixed(2);
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro · Pro Salud Paz</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container">
+    <h2>Nueva Venta / Servicio</h2>
+    <p id="txtBienvenida" class="mt-neg mb-15"></p>
+
+    <form id="formVenta">
+        <div class="form-group">
+            <label>Fecha del Servicio</label>
+            <input type="date" id="fecha" required>
+        </div>
+
+        <div class="form-group">
+            <label>Seleccionar Terapeuta</label>
+            <select id="terapeuta" required>
+                <option value="" disabled selected>-- Cargando terapeutas... --</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Tiempo del Servicio (Minutos)</label>
+            <input type="number" id="minutos" placeholder="Ej. 45, 60, 90" required>
+        </div>
+
+        <div class="form-group">
+            <label>Costo Total (S/.)</label>
+            <input type="number" step="0.10" id="costo" placeholder="S/. 0.00" required>
+        </div>
+
+        <div class="form-group">
+            <label>Método de Pago</label>
+            <select id="metodo_pago" required>
+                <option value="" disabled selected>-- Seleccionar --</option>
+                <option value="EFECTIVO">EFECTIVO</option>
+                <option value="YAPE">YAPE</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Hora de Fin (Término)</label>
+            <input type="time" id="hora_fin" required>
+        </div>
+
+        <div class="form-group">
+            <label style="display:flex; align-items:center; gap:8px; text-transform:none; font-size:14px; cursor:pointer; color: var(--card-text);">
+                <input type="checkbox" id="feriado" style="width:auto; accent-color: var(--btn-color-2); cursor:pointer;">
+                🎉 ¿Es día Feriado? (Comisión 60% chica / 40% local)
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label>Observaciones / Detalles</label>
+            <textarea id="observaciones" rows="2" placeholder="Ej. Nombre del cliente o masaje específico"></textarea>
+        </div>
+
+        <button type="submit">Guardar Registro</button>
+    </form>
+
+    <div class="menu-grid mt-20">
+        <a href="menu.html" class="btn-menu" style="background-color: var(--rose);">⬅️ Volver al Menú</a>
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+    const sesion = verificarSesion(false);
+
+    if (sesion && sesion.nombre) {
+        document.getElementById('txtBienvenida').textContent = "Cajero(a): " + sesion.nombre;
+    }
+
+    function obtenerTiemposPeru() {
+        const ahora = new Date();
+        const stringLima = ahora.toLocaleString("en-US", { timeZone: "America/Lima" });
+        const fechaPeru = new Date(stringLima);
+
+        const anio = fechaPeru.getFullYear();
+        const mes = String(fechaPeru.getMonth() + 1).padStart(2, '0');
+        const mesCorto = fechaPeru.getMonth() + 1;
+        const dia = String(fechaPeru.getDate()).padStart(2, '0');
+        const diaCorto = fechaPeru.getDate();
+
+        const hh = String(fechaPeru.getHours()).padStart(2, '0');
+        const min = String(fechaPeru.getMinutes()).padStart(2, '0');
+        const ss = String(fechaPeru.getSeconds()).padStart(2, '0');
+
+        return {
+            fechaInput: `${anio}-${mes}-${dia}`,
+            horaRegistro: `${diaCorto}/${mesCorto}/${anio} ${hh}:${min}:${ss}`,
+            horaFinDefecto: `${hh}:${min}`
+        };
+    }
+
+    const tiemposActuales = obtenerTiemposPeru();
+    document.getElementById('fecha').value = tiemposActuales.fechaInput;
+    document.getElementById('hora_fin').value = tiemposActuales.horaFinDefecto;
+
+    // 🎉 Feriado: al marcar, se coloca "Feriado" en observaciones para que quede
+    // reflejado en el Excel; al desmarcar, se quita solo si lo pusimos nosotros.
+    const chkFeriado = document.getElementById('feriado');
+    const txtObservaciones = document.getElementById('observaciones');
+    let feriadoAutoInsertado = false;
+
+    chkFeriado.addEventListener('change', function() {
+        if (this.checked) {
+            if (!txtObservaciones.value.includes('Feriado')) {
+                txtObservaciones.value = txtObservaciones.value
+                    ? ('Feriado - ' + txtObservaciones.value)
+                    : 'Feriado';
+                feriadoAutoInsertado = true;
+            }
+        } else if (feriadoAutoInsertado) {
+            txtObservaciones.value = txtObservaciones.value
+                .replace('Feriado - ', '')
+                .replace('Feriado', '')
+                .trim();
+            feriadoAutoInsertado = false;
+        }
+    });
+
+    document.getElementById('minutos').addEventListener('input', function() {
+        const mins = this.value;
+        if (mins) {
+            document.getElementById('costo').value = parseFloat(mins).toFixed(2);
+        } else {
+            document.getElementById('costo').value = "";
+        }
+    });
+
+    // CARGAR LAS TERAPEUTAS — usando caché para que la lista aparezca más rápido
+    obtenerDatosGenerales(function(data) {
+        const select = document.getElementById('terapeuta');
+        if (!data) return;
+        select.innerHTML = '<option value="" disabled selected>-- Seleccionar Terapeuta --</option>';
+
+        if (data.terapeutas && data.terapeutas.length > 0) {
+            const terapeutasOrdenadas = [...data.terapeutas].sort((a, b) =>
+                a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
+            );
+            terapeutasOrdenadas.forEach(chica => {
+                const option = document.createElement('option');
+                option.value = `${chica.dni}|${chica.nombre.toUpperCase()}`;
+                option.textContent = chica.nombre.toUpperCase();
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = '<option value="" disabled>No hay terapeutas en el Excel</option>';
+        }
+    });
+
+    document.getElementById('formVenta').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const terapeutaSeleccionada = document.getElementById('terapeuta').value;
+        if(!terapeutaSeleccionada) {
+            alert("Por favor, selecciona una terapeuta válida antes de guardar.");
+            return;
+        }
+
+        const tData = terapeutaSeleccionada.split('|');
+        const costo = parseFloat(document.getElementById('costo').value);
+        const t = obtenerTiemposPeru();
+
+        const horaFinIngresada = document.getElementById('hora_fin').value;
+        const minutosServicio = parseInt(document.getElementById('minutos').value);
+
+        const fp = new Date();
+        const [hF, mF] = horaFinIngresada.split(':');
+        fp.setHours(parseInt(hF), parseInt(mF), 0, 0);
+
+        fp.setMinutes(fp.getMinutes() - minutosServicio);
+
+        const hhInicio = String(fp.getHours()).padStart(2, '0');
+        const mmInicio = String(fp.getMinutes()).padStart(2, '0');
+        const horaInicioCalculada = `${hhInicio}:${mmInicio}`;
+
+        const esFeriado = chkFeriado.checked;
+        const pctChica = esFeriado ? 0.6 : 0.5;
+        const pctLocal = esFeriado ? 0.4 : 0.5;
+
+        const payload = {
+    action: 'guardar',
+    Fecha: document.getElementById('fecha').value,
+    hora_registro: t.horaRegistro,
+    Terapeuta: tData[1],
+    dni: tData[0],
+    feriado: esFeriado,
+    "Hora Inicio": horaInicioCalculada,
+    Minutos: minutosServicio,
+    "Hora Fin": horaFinIngresada,
+    costo_total: costo,
+    ganancia_terapeuta: (costo * pctChica),
+    ganancia_local: (costo * pctLocal),
+    "Metodo Pago": document.getElementById('metodo_pago').value,
+    observaciones: document.getElementById('observaciones').value,
+    usuario_registro: sesion.usuario
+};
+
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        btn.textContent = "Guardando...";
+
+        fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if(res.status === "success") {
+                invalidarCacheGeneral(); // hay una venta nueva: refrescar datos en la próxima carga
+                alert("Servicio registrado con éxito en Excel.");
+                document.getElementById('formVenta').reset();
+                feriadoAutoInsertado = false;
+
+                const tNuevo = obtenerTiemposPeru();
+                document.getElementById('fecha').value = tNuevo.fechaInput;
+                document.getElementById('hora_fin').value = tNuevo.horaFinDefecto;
+            } else {
+                alert("Error: " + res.message);
+            }
+        })
+        .catch(err => alert("Error de red al intentar guardar."))
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = "Guardar Registro";
+        });
+    });
+</script>
+</body>
+</html>

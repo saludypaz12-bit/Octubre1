@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingresar · Pro Salud Paz</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container">
+    <h2>Pro Salud Paz</h2>
+    <form id="formLogin">
+        <div class="form-group">
+            <label>Usuario</label>
+            <input type="text" id="usuario" placeholder="Tu usuario" required autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label>Contraseña</label>
+            <input type="password" id="password" placeholder="Tu contraseña" required autocomplete="current-password">
+        </div>
+        <button type="submit">Ingresar</button>
+        <p id="mensajeError" style="display:none;"></p>
+    </form>
+</div>
+
+<script src="config.js"></script>
+<script>
+document.getElementById('formLogin').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const usuario = document.getElementById('usuario').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = e.target.querySelector('button');
+    const errorMsg = document.getElementById('mensajeError');
+
+    btn.disabled = true;
+    btn.textContent = "Verificando...";
+    errorMsg.style.display = "none";
+
+    fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'login', usuario, password })
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.status === "success") {
+            localStorage.setItem('sesion', JSON.stringify({
+                usuario: usuario,
+                rol: res.rol,
+                nombre: res.nombre
+            }));
+            invalidarCacheGeneral(); // nueva sesión: partir con datos frescos
+            window.location.href = "menu.html";
+        } else {
+            errorMsg.textContent = res.message || "Usuario o contraseña incorrectos";
+            errorMsg.style.display = "block";
+            btn.disabled = false;
+            btn.textContent = "Ingresar";
+        }
+    })
+    .catch(err => {
+        errorMsg.textContent = "Error de conexión. Verifica tu internet.";
+        errorMsg.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "Ingresar";
+    });
+});
+</script>
+</body>
+</html>
